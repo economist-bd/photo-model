@@ -1,0 +1,312 @@
+<!DOCTYPE html>
+<html lang="bn">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>Photo Model - by Md. Monjurul Haque</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css" rel="stylesheet">
+    <style>
+        /* বেসিক রিসেট এবং মোবাইল ভিউ কনফিগারেশন */
+        body, html {
+            margin: 0;
+            padding: 0;
+            width: 100%;
+            height: 100%;
+            background-color: #000;
+            overflow: hidden;
+            touch-action: none; /* ডিফল্ট ব্রাউজার সোয়াইপ বন্ধ করতে */
+        }
+
+        /* ট্রাঞ্জিশন এনিমেশন কি-ফ্রেম সমূহ */
+        @keyframes fadeIn { from { opacity: 0; } to { opacity: 1; } }
+        @keyframes zoomIn { from { opacity: 0; transform: scale(0.5); } to { opacity: 1; transform: scale(1); } }
+        @keyframes slideInRight { from { opacity: 0; transform: translateX(100%); } to { opacity: 1; transform: translateX(0); } }
+        @keyframes slideInLeft { from { opacity: 0; transform: translateX(-100%); } to { opacity: 1; transform: translateX(0); } }
+        @keyframes flipIn { from { opacity: 0; transform: perspective(400px) rotateY(90deg); } to { opacity: 1; transform: perspective(400px) rotateY(0deg); } }
+        @keyframes rotateIn { from { opacity: 0; transform: rotate(-200deg); } to { opacity: 1; transform: rotate(0); } }
+
+        .anim-fade { animation: fadeIn 0.8s ease-in-out forwards; }
+        .anim-zoom { animation: zoomIn 0.8s ease-out forwards; }
+        .anim-slide-right { animation: slideInRight 0.6s ease-out forwards; }
+        .anim-slide-left { animation: slideInLeft 0.6s ease-out forwards; }
+        .anim-flip { animation: flipIn 0.8s ease-out forwards; }
+        .anim-rotate { animation: rotateIn 0.8s ease-out forwards; }
+
+        .image-container {
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            opacity: 0; /* শুরুতে লুকানো থাকবে */
+        }
+
+        .image-container img {
+            max-width: 100%;
+            max-height: 100%;
+            object-fit: contain; /* ছবি যেন না কাটে */
+            border-radius: 10px;
+            box-shadow: 0 10px 30px rgba(0,0,0,0.5);
+        }
+
+        /* বিজ্ঞাপন মোডাল ডিজাইন */
+        #ad-modal-overlay {
+            backdrop-filter: blur(5px);
+        }
+    </style>
+</head>
+<body class="text-gray-800 antialiased font-sans">
+
+    <!-- মূল এ্যাপ কন্টেইনার -->
+    <div id="app-container" class="relative w-full h-full">
+        
+        <!-- লোডিং স্ক্রিন -->
+        <div id="loading" class="absolute inset-0 flex flex-col items-center justify-center z-10 text-white">
+            <i class="fas fa-circle-notch fa-spin text-4xl mb-3 text-blue-500"></i>
+            <p class="text-lg font-semibold animate-pulse">ছবি লোড হচ্ছে...</p>
+        </div>
+
+        <!-- ছবি দেখানোর কন্টেইনার -->
+        <div id="slider" class="w-full h-full relative">
+            <div id="img-wrapper" class="image-container">
+                <img id="main-image" src="" alt="Model Photo">
+            </div>
+        </div>
+
+        <!-- সোয়াইপ নির্দেশিকা -->
+        <div class="absolute bottom-20 left-0 w-full text-center text-white/50 text-sm pointer-events-none animate-bounce">
+            <i class="fas fa-arrows-alt-h text-xl mb-1"></i><br>
+            ডানে বা বামে স্লাইড করুন
+        </div>
+
+        <!-- ফ্লোটিং এ্যাকশন বাটন (FAB) -->
+        <button id="fab-btn" class="absolute bottom-6 right-6 bg-blue-600/90 text-white w-14 h-14 rounded-full shadow-lg shadow-blue-500/50 flex items-center justify-center text-2xl z-20 hover:bg-blue-700 transition-colors border-2 border-white/20">
+            <i class="fas fa-user-tie"></i>
+        </button>
+    </div>
+
+    <!-- বিজ্ঞাপন মোডাল -->
+    <div id="ad-modal" class="hidden fixed inset-0 z-[60] flex items-center justify-center">
+        <!-- ব্যাকগ্রাউন্ড ওভারলে (ক্লিক করলে বন্ধ হবে) -->
+        <div id="ad-modal-overlay" class="absolute inset-0 bg-black/80"></div>
+        
+        <!-- বিজ্ঞাপনের কন্টেন্ট -->
+        <div class="relative bg-white rounded-xl shadow-2xl p-6 w-11/12 max-w-md z-10 flex flex-col items-center">
+            <button id="close-ad-btn" class="absolute -top-3 -right-3 bg-red-500 text-white w-8 h-8 rounded-full flex items-center justify-center shadow-lg border-2 border-white hover:bg-red-600">
+                <i class="fas fa-times"></i>
+            </button>
+            <p class="text-xs text-gray-400 mb-2 uppercase tracking-wider">Sponsored</p>
+            
+            <!-- ব্যবহারকারীর দেয়া বিজ্ঞাপনের কোড -->
+            <div class="w-full min-h-[250px] bg-gray-100 flex items-center justify-center rounded border border-gray-200 overflow-hidden">
+                <!-- Script tag is placed here -->
+                <script async="async" data-cfasync="false" src="https://pl27795394.effectivecpmnetwork.com/b217d7a1084b11d8d6b5de5596e606c1/invoke.js"></script>
+                <div id="container-b217d7a1084b11d8d6b5de5596e606c1"></div>
+            </div>
+        </div>
+    </div>
+
+    <!-- এবাউট / প্রোফাইল মোডাল -->
+    <div id="about-modal" class="hidden fixed inset-0 z-50 flex items-end justify-center sm:items-center">
+        <div id="about-modal-overlay" class="absolute inset-0 bg-black/60 backdrop-blur-sm"></div>
+        
+        <div class="relative bg-gradient-to-b from-slate-800 to-slate-900 w-full sm:w-96 p-8 rounded-t-3xl sm:rounded-3xl shadow-2xl z-10 text-white transform transition-transform translate-y-full" id="about-content">
+            <button id="close-about-btn" class="absolute top-4 right-4 text-gray-400 hover:text-white text-xl">
+                <i class="fas fa-times"></i>
+            </button>
+            
+            <div class="text-center">
+                <div class="w-24 h-24 bg-blue-500 rounded-full mx-auto border-4 border-slate-700 shadow-lg flex items-center justify-center mb-4 overflow-hidden">
+                    <i class="fas fa-user-graduate text-4xl text-white"></i>
+                </div>
+                <h2 class="text-2xl font-bold mb-1">মোঃ মঞ্জুরুল হক</h2>
+                <p class="text-blue-400 font-medium text-sm mb-3">প্রাবন্ধিক অর্থনীতি ও ওয়েব ডেভেলপার</p>
+                <div class="w-16 h-1 bg-blue-500 mx-auto rounded-full mb-4"></div>
+                <p class="text-gray-300 text-sm mb-6 leading-relaxed">
+                    জিয়াউদ্দিন স্কুল এন্ড কলেজ, কিশোরগঞ্জ।<br>
+                    আমি নিয়মিত ওয়েব ডেভেলপমেন্ট ও এআই এর সহায়তায় ওয়েবসাইট তৈরি করি এবং ছাত্র-ছাত্রীদের আইসিটি ও আধুনিক প্রযুক্তি সম্পর্কে পরামর্শ দিয়ে থাকি।
+                </p>
+                
+                <!-- সোশ্যাল মিডিয়া লিংকস -->
+                <div class="flex justify-center space-x-4">
+                    <a href="#" class="w-10 h-10 rounded-full bg-slate-700 flex items-center justify-center hover:bg-blue-600 transition-colors"><i class="fab fa-facebook-f"></i></a>
+                    <a href="#" class="w-10 h-10 rounded-full bg-slate-700 flex items-center justify-center hover:bg-blue-400 transition-colors"><i class="fab fa-twitter"></i></a>
+                    <a href="#" class="w-10 h-10 rounded-full bg-slate-700 flex items-center justify-center hover:bg-pink-600 transition-colors"><i class="fab fa-instagram"></i></a>
+                    <a href="https://github.com/economist-bd" target="_blank" class="w-10 h-10 rounded-full bg-slate-700 flex items-center justify-center hover:bg-gray-600 transition-colors"><i class="fab fa-github"></i></a>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- জাভাস্ক্রিপ্ট লজিক -->
+    <script>
+        // ভেরিয়েবল ডিক্লেয়ারেশন
+        let images = [];
+        let currentIndex = 0;
+        const imgWrapper = document.getElementById('img-wrapper');
+        const mainImage = document.getElementById('main-image');
+        const loadingScreen = document.getElementById('loading');
+        
+        // গিটহাব রিপোজিটরির তথ্য
+        const githubRepoOwner = 'economist-bd';
+        const githubRepoName = 'photo-model';
+        const apiUrl = `https://api.github.com/repos/${githubRepoOwner}/${githubRepoName}/contents/`;
+
+        // বিভিন্ন ট্রাঞ্জিশন এনিমেশনের তালিকা
+        const transitionClasses = ['anim-fade', 'anim-zoom', 'anim-slide-right', 'anim-slide-left', 'anim-flip', 'anim-rotate'];
+
+        // গিটহাব থেকে ছবি ফেইচ করার ফাংশন
+        async function fetchImages() {
+            try {
+                const response = await fetch(apiUrl);
+                if (!response.ok) throw new Error('Network response was not ok');
+                const data = await response.json();
+                
+                // শুধুমাত্র ছবি ফাইল ফিল্টার করা
+                images = data
+                    .filter(file => file.type === 'file' && file.name.match(/\.(jpg|jpeg|png|gif|webp)$/i))
+                    .map(file => file.download_url);
+
+                if (images.length === 0) {
+                    throw new Error('No images found');
+                }
+            } catch (error) {
+                console.warn("গিটহাব থেকে ছবি লোড করা যায়নি। ডেমো ছবি দেখানো হচ্ছে...", error);
+                // ফেইল হলে কিছু ডেমো/ডিফল্ট ছবি
+                images = [
+                    'https://images.unsplash.com/photo-1529626455594-4ff0802cfb7e?auto=format&fit=crop&w=800&q=80',
+                    'https://images.unsplash.com/photo-1534528741775-53994a69daeb?auto=format&fit=crop&w=800&q=80',
+                    'https://images.unsplash.com/photo-1517841905240-472988babdf9?auto=format&fit=crop&w=800&q=80',
+                    'https://images.unsplash.com/photo-1524504388940-b1c1722653e1?auto=format&fit=crop&w=800&q=80'
+                ];
+            }
+
+            // লোডিং সরানো এবং প্রথম ছবি দেখানো
+            loadingScreen.style.display = 'none';
+            if(images.length > 0) {
+                showImage(0);
+            }
+        }
+
+        // ছবি দেখানোর ফাংশন (ট্রাঞ্জিশন সহ)
+        function showImage(index) {
+            // পূর্বের এনিমেশন মুছে ফেলা
+            imgWrapper.className = 'image-container'; 
+            
+            // জোর করে ব্রাউজার রিফ্লো করানো যেন নতুন এনিমেশন কাজ করে
+            void imgWrapper.offsetWidth; 
+            
+            // নতুন ছবি সেট করা
+            mainImage.src = images[index];
+            
+            // একটি র‍্যান্ডম এনিমেশন সিলেক্ট করা
+            const randomAnim = transitionClasses[Math.floor(Math.random() * transitionClasses.length)];
+            imgWrapper.classList.add(randomAnim);
+        }
+
+        // নেক্সট এবং প্রিভিয়াস ছবি ফাংশন
+        function nextImage() {
+            if(images.length === 0) return;
+            currentIndex = (currentIndex + 1) % images.length;
+            showImage(currentIndex);
+        }
+
+        function prevImage() {
+            if(images.length === 0) return;
+            currentIndex = (currentIndex - 1 + images.length) % images.length;
+            showImage(currentIndex);
+        }
+
+        // টাচ (সোয়াইপ) ইভেন্ট হ্যান্ডলিং
+        let touchStartX = 0;
+        let touchEndX = 0;
+        const slider = document.getElementById('app-container');
+
+        slider.addEventListener('touchstart', e => {
+            touchStartX = e.changedTouches[0].screenX;
+        }, { passive: true });
+
+        slider.addEventListener('touchend', e => {
+            touchEndX = e.changedTouches[0].screenX;
+            handleSwipe();
+        }, { passive: true });
+
+        function handleSwipe() {
+            const swipeThreshold = 50; // সোয়াইপ ডিটেক্ট করার ন্যূনতম দূরত্ব
+            if (touchEndX < touchStartX - swipeThreshold) {
+                // বামে সোয়াইপ (পরবর্তী ছবি)
+                nextImage();
+            }
+            if (touchEndX > touchStartX + swipeThreshold) {
+                // ডানে সোয়াইপ (পূর্বের ছবি)
+                prevImage();
+            }
+        }
+
+        // কীবোর্ড এর এ্যারো কি সাপোর্ট (যদি কেউ ডেক্সটপে চেক করে)
+        document.addEventListener('keydown', (e) => {
+            if(e.key === 'ArrowRight') nextImage();
+            if(e.key === 'ArrowLeft') prevImage();
+        });
+
+        // ================= বিজ্ঞাপন (Ad) সিস্টেম =================
+        const adModal = document.getElementById('ad-modal');
+        const closeAdBtn = document.getElementById('close-ad-btn');
+        const adModalOverlay = document.getElementById('ad-modal-overlay');
+
+        function showAd() {
+            adModal.classList.remove('hidden');
+        }
+
+        function hideAd() {
+            adModal.classList.add('hidden');
+        }
+
+        // প্রতি ৩০ সেকেন্ড (30000 ms) পর পর বিজ্ঞাপন দেখানো
+        setInterval(() => {
+            showAd();
+        }, 30000);
+
+        // ক্রস বাটনে বা ফাঁকা স্থানে ক্লিক করলে বিজ্ঞাপন বন্ধ
+        closeAdBtn.addEventListener('click', hideAd);
+        adModalOverlay.addEventListener('click', hideAd);
+
+
+        // ================= প্রোফাইল / এবাউট মোডাল =================
+        const fabBtn = document.getElementById('fab-btn');
+        const aboutModal = document.getElementById('about-modal');
+        const closeAboutBtn = document.getElementById('close-about-btn');
+        const aboutModalOverlay = document.getElementById('about-modal-overlay');
+        const aboutContent = document.getElementById('about-content');
+
+        function openAbout() {
+            aboutModal.classList.remove('hidden');
+            // এনিমেশন এর জন্য একটু সময় দিয়ে ক্লাস যুক্ত করা
+            setTimeout(() => {
+                aboutContent.classList.remove('translate-y-full');
+            }, 10);
+        }
+
+        function closeAbout() {
+            aboutContent.classList.add('translate-y-full');
+            setTimeout(() => {
+                aboutModal.classList.add('hidden');
+            }, 300); // ট্রাঞ্জিশন শেষ হওয়ার পর লুকানো
+        }
+
+        fabBtn.addEventListener('click', openAbout);
+        closeAboutBtn.addEventListener('click', closeAbout);
+        aboutModalOverlay.addEventListener('click', closeAbout);
+
+        // এ্যাপ শুরু করা
+        window.onload = () => {
+            fetchImages();
+        };
+
+    </script>
+</body>
+</html>
